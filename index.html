@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RK Game</title>
+
+<style>
+*{
+  box-sizing:border-box;
+  user-select:none;
+}
+
+body{
+  margin:0;
+  overflow:hidden;
+  background:#080b18;
+  font-family:Arial,sans-serif;
+  color:white;
+}
+
+#game{
+  position:relative;
+  width:100vw;
+  height:100vh;
+  overflow:hidden;
+  background:
+  radial-gradient(circle at 50% 20%,#20285a,#080b18 70%);
+}
+
+#top{
+  position:absolute;
+  top:15px;
+  left:0;
+  width:100%;
+  display:flex;
+  justify-content:space-around;
+  z-index:10;
+  font-size:18px;
+  font-weight:bold;
+}
+
+#player{
+  position:absolute;
+  width:45px;
+  height:45px;
+  border-radius:12px;
+  background:linear-gradient(135deg,#00f5ff,#0066ff);
+  box-shadow:0 0 25px #00d9ff;
+  bottom:80px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:5;
+}
+
+.enemy{
+  position:absolute;
+  width:42px;
+  height:42px;
+  border-radius:50%;
+  background:linear-gradient(135deg,#ff3030,#8b0000);
+  box-shadow:0 0 20px red;
+}
+
+.coin{
+  position:absolute;
+  width:27px;
+  height:27px;
+  border-radius:50%;
+  background:gold;
+  box-shadow:0 0 18px gold;
+  border:3px solid #fff3a0;
+}
+
+#startScreen,
+#gameOver{
+  position:absolute;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  background:rgba(0,0,0,.65);
+  z-index:20;
+  text-align:center;
+}
+
+h1{
+  font-size:42px;
+  margin:10px;
+  text-shadow:0 0 20px #00d9ff;
+}
+
+button{
+  padding:15px 35px;
+  border:0;
+  border-radius:30px;
+  background:linear-gradient(90deg,#00d9ff,#6c00ff);
+  color:white;
+  font-size:18px;
+  font-weight:bold;
+  margin-top:20px;
+}
+
+#controls{
+  position:absolute;
+  bottom:20px;
+  width:100%;
+  display:flex;
+  justify-content:space-around;
+  z-index:15;
+}
+
+.control{
+  width:75px;
+  height:55px;
+  border-radius:18px;
+  background:rgba(255,255,255,.15);
+  border:1px solid rgba(255,255,255,.3);
+  color:white;
+  font-size:28px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="game">
+
+  <div id="top">
+    <div>⭐ Score: <span id="score">0</span></div>
+    <div>🏆 Best: <span id="best">0</span></div>
+  </div>
+
+  <div id="player"></div>
+
+  <div id="controls">
+    <button class="control" id="left">⬅️</button>
+    <button class="control" id="right">➡️</button>
+  </div>
+
+  <div id="startScreen">
+    <h1>⚡ RK GAME ⚡</h1>
+    <p>Red enemies se bacho aur golden coins collect karo!</p>
+    <button id="startBtn">START GAME</button>
+  </div>
+
+  <div id="gameOver" style="display:none;">
+    <h1>💥 GAME OVER</h1>
+    <h2>Score: <span id="finalScore">0</span></h2>
+    <button id="restartBtn">PLAY AGAIN</button>
+  </div>
+
+</div>
+
+<script>
+
+const game = document.getElementById("game");
+const player = document.getElementById("player");
+const scoreText = document.getElementById("score");
+const bestText = document.getElementById("best");
+
+let playerX;
+let score = 0;
+let speed = 3;
+let gameRunning = false;
+let enemies = [];
+let coins = [];
+
+let best = localStorage.getItem("rkBest") || 0;
+bestText.textContent = best;
+
+function startGame(){
+
+  document.getElementById("startScreen").style.display="none";
+  document.getElementById("gameOver").style.display="none";
+
+  score = 0;
+  speed = 3;
+  scoreText.textContent = 0;
+
+  enemies.forEach(e => e.remove());
+  coins.forEach(c => c.remove());
+
+  enemies = [];
+  coins = [];
+
+  playerX = window.innerWidth / 2;
+  player.style.left = playerX + "px";
+
+  gameRunning = true;
+
+  gameLoop();
+  createEnemy();
+  createCoin();
+}
+
+function createEnemy(){
+
+  if(!gameRunning) return;
+
+  const enemy = document.createElement("div");
+  enemy.className = "enemy";
+
+  enemy.style.left = Math.random() * (window.innerWidth - 45) + "px";
+  enemy.style.top = "-50px";
+
+  game.appendChild(enemy);
+  enemies.push(enemy);
+
+  setTimeout(createEnemy, Math.max(350, 1000 - score * 5));
+}
+
+function createCoin(){
+
+  if(!gameRunning) return;
+
+  const coin = document.createElement("div");
+  coin.className = "coin";
+
+  coin.style.left = Math.random() * (window.innerWidth - 30) + "px";
+  coin.style.top = "-40px";
+
+  game.appendChild(coin);
+  coins.push(coin);
+
+  setTimeout(createCoin, 1200);
+}
+
+function gameLoop(){
+
+  if(!gameRunning) return;
+
+  enemies.forEach((enemy, index) => {
+
+    let y = enemy.offsetTop;
+    enemy.style.top = (y + speed) + "px";
+
+    if(y > window.innerHeight){
+      enemy.remove();
+      enemies.splice(index, 1);
+    }
+
+    if(collision(player, enemy)){
+      endGame();
+    }
+  });
+
+  coins.forEach((coin, index) => {
+
+    let y = coin.offsetTop;
+    coin.style.top = (y + speed) + "px";
+
+    if(y > window.innerHeight){
+      coin.remove();
+      coins.splice(index, 1);
+    }
+
+    if(collision(player, coin)){
+
+      score += 10;
+      scoreText.textContent = score;
+
+      coin.remove();
+      coins.splice(index, 1);
+
+      if(score % 50 === 0){
+        speed += 0.5;
+      }
+    }
+  });
+
+  requestAnimationFrame(gameLoop);
+}
+
+function collision(a, b){
+
+  const A = a.getBoundingClientRect();
+  const B = b.getBoundingClientRect();
+
+  return !(
+    A.bottom < B.top ||
+    A.top > B.bottom ||
+    A.right < B.left ||
+    A.left > B.right
+  );
+}
+
+function moveLeft(){
+
+  if(!gameRunning) return;
+
+  playerX -= 35;
+
+  if(playerX < 25){
+    playerX = 25;
+  }
+
+  player.style.left = playerX + "px";
+}
+
+function moveRight(){
+
+  if(!gameRunning) return;
+
+  playerX += 35;
+
+  if(playerX > window.innerWidth - 25){
+    playerX = window.innerWidth - 25;
+  }
+
+  player.style.left = playerX + "px";
+}
+
+function endGame(){
+
+  gameRunning = false;
+
+  if(score > best){
+
+    best = score;
+    localStorage.setItem("rkBest", best);
+    bestText.textContent = best;
+  }
+
+  document.getElementById("finalScore").textContent = score;
+  document.getElementById("gameOver").style.display = "flex";
+}
+
+document.getElementById("startBtn").onclick = startGame;
+document.getElementById("restartBtn").onclick = startGame;
+
+document.getElementById("left").addEventListener("touchstart", moveLeft);
+document.getElementById("right").addEventListener("touchstart", moveRight);
+
+document.getElementById("left").addEventListener("click", moveLeft);
+document.getElementById("right").addEventListener("click", moveRight);
+
+document.addEventListener("keydown", (e) => {
+
+  if(e.key === "ArrowLeft"){
+    moveLeft();
+  }
+
+  if(e.key === "ArrowRight"){
+    moveRight();
+  }
+
+});
+
+</script>
+
+</body>
+</html>
